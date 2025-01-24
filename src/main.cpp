@@ -20,15 +20,14 @@ class TerraNarrative{
    
    public:
 
-        TerraNarrative(){
-            camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
-        }
+        TerraNarrative(){}
 
         void init(){
             initGLFW();
             createWindow();
             initGLAD();
             setupGLFWCallbacks();
+            initCamera();
             initTerrain();
         }
 
@@ -129,6 +128,10 @@ class TerraNarrative{
 
         }
 
+        void initCamera(){
+            camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
+        }
+
         void renderScene(){
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
@@ -187,7 +190,10 @@ int main(){
     TerraNarrative app = TerraNarrative();
 
     app.init();    
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    glFrontFace(GL_CW);
+    glCullFace(GL_BACK) ;
+    glEnable(GL_CULL_FACE) ;
     glEnable(GL_DEPTH_TEST);
     app.run();    
 
