@@ -7,5 +7,4 @@
 # Ignore build outputs and intermediate files
 build/
 
-# Ignore CMake generated files
-CMakeLists.txt
+
