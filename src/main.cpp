@@ -5,6 +5,7 @@
 #include <load_shader/shader.h> 
 #include <camera/camera.h>
 #include <stb/stb_image.h>
+#include <terrain/terrain.h>
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -81,6 +82,7 @@ class TerraNarrative{
 
         GLFWwindow* window = NULL;
         Camera camera;
+        BaseTerrain m_terrain;
 
         bool m_cursorEnabled = false;
         bool m_lastTabState = false;  
@@ -125,7 +127,7 @@ class TerraNarrative{
         }
         
         void initTerrain(){
-
+            m_terrain.LoadFromFile("../assets/data/heightmap.save");
         }
 
         void initCamera(){

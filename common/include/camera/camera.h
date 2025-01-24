@@ -1,5 +1,6 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#pragma once
+
+// Header file contents go here
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -53,4 +54,4 @@ private:
     void updateCameraVectors();
 };
 
-#endif
+

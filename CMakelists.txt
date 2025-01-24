@@ -24,6 +24,9 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     common/src/camera.cpp
     common/src/shader.cpp
+    common/src/terrain.cpp    
+    common/src/height_map.cpp    
+    common/src/utils.cpp
 )
 
 # Link libraries
