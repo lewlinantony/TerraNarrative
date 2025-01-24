@@ -1,0 +1,11 @@
+# Ignore system-specific files
+.DS_Store
+
+# Ignore IDE and editor settings
+.vscode/
+
+# Ignore build outputs and intermediate files
+build/
+
+# Ignore CMake generated files
+CMakeLists.txt
