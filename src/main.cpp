@@ -5,39 +5,33 @@
 #include <load_shader/shader.h> 
 #include <camera/camera.h>
 #include <stb/stb_image.h>
-#include <terrain/terrain.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
-
-
-
-static void framebuffer_size_callback(GLFWwindow* window, int width, int height){
-    glViewport(0, 0, width, height);
-} 
+int WINDOW_WIDTH = 800;
+int WINDOW_HEIGHT = 600;
+float ASPECT_RATIO = static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT;
 
 
 class TerraNarrative{
    
    public:
-
         TerraNarrative(){}
 
         void init(){
             initGLFW();
             createWindow();
-            initGLAD();
             setupGLFWCallbacks();
+            initGLAD();
             initCamera();
+            initShaders();
             initTerrain();
         }
 
         void processInput(GLFWwindow* window){
-
-            // ESC to Close
-            if(glfwGetKey(window,GLFW_KEY_ESCAPE) == GLFW_PRESS){
-                glfwSetWindowShouldClose(window,true);
-            }
+            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+                glfwSetWindowShouldClose(window, true);
 
             // Check TAB state
             bool currentTabState = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
@@ -45,30 +39,58 @@ class TerraNarrative{
                 m_cursorEnabled = !m_cursorEnabled;
                 glfwSetInputMode(window, GLFW_CURSOR, 
                     m_cursorEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
-
-                // Reset m_firstMouse when switching modes to prevent camera jump
+                // Reset firstMouse when switching modes to prevent camera jump
                 m_firstMouse = true;
             }
-
             m_lastTabState = currentTabState;
-
-            if(glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS){
-                m_isWireframe = !m_isWireframe;
-                if (m_isWireframe) {
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                } else {
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                }
+            
+            if (!m_cursorEnabled) {
+                float cameraSpeed = 2.5f * m_deltaTime;
+                if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+                    camera.ProcessKeyboard(FORWARD, m_deltaTime);
+                if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+                    camera.ProcessKeyboard(BACKWARD, m_deltaTime);
+                if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+                    camera.ProcessKeyboard(LEFT, m_deltaTime);
+                if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+                    camera.ProcessKeyboard(RIGHT, m_deltaTime);
             }
-
-
-
         }
 
         void run(){
             while(!glfwWindowShouldClose(window)){
+                float currentFrame = static_cast<float>(glfwGetTime());
+                m_deltaTime = currentFrame - m_lastFrame;
+                m_lastFrame = currentFrame;
+
                 processInput(window);
-                renderScene();
+
+                glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                shader.use();
+
+                glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)ASPECT_RATIO, m_near, m_far);
+                shader.setMat4("projection", projection);
+
+                // camera/view transformation
+                glm::mat4 view = camera.GetViewMatrix();   
+                shader.setMat4("view", view);
+
+                glm::mat4 model = glm::mat4(1.0f);
+                shader.setMat4("model", model);
+
+                glBindVertexArray(m_VAO);
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                
+                for(unsigned strip = 0; strip < m_numStrips; strip++)
+                {
+                    glDrawElements(GL_TRIANGLE_STRIP,   // primitive type
+                                m_numTrisPerStrip+2,   // number of m_indices to render
+                                GL_UNSIGNED_INT,     // index data type
+                                (void*)(sizeof(unsigned) * (m_numTrisPerStrip+2) * strip)); // offset to starting index
+                }        
+
                 glfwSwapBuffers(window);
                 glfwPollEvents();
             }
@@ -76,13 +98,11 @@ class TerraNarrative{
             glfwTerminate();                
         }
 
-
-    
     private:
 
         GLFWwindow* window = NULL;
         Camera camera;
-        BaseTerrain m_terrain;
+        Shader shader;
 
         bool m_cursorEnabled = false;
         bool m_lastTabState = false;  
@@ -90,6 +110,37 @@ class TerraNarrative{
         bool m_isWireframe = false; 
         double m_lastX = WINDOW_WIDTH / 2.0;
         double m_lastY = WINDOW_HEIGHT / 2.0;
+        int m_widthImg;
+        int m_heightImg;
+        int m_nrChannels;
+
+        int m_numStrips;
+        int m_numTrisPerStrip;
+
+        float m_yScale = 64.0f / 256.0f;
+        float m_yShift = 16.0f;  
+        int m_resolution = 1;
+
+
+        float m_deltaTime = 0.0f;	// Time between current frame and last frame
+        float m_lastFrame = 0.0f; // Time of last frame
+
+        float m_near  =  0.1f;
+        float m_far   =  1000.0f;        
+
+        const char* m_vertexShader = "../assets/shaders/terrain.vert";
+        const char* m_fragShader = "../assets/shaders/terrain.frag";        
+        
+        GLuint m_VAO,m_VBO,m_IBO;
+
+        glm::vec3 m_cameraPos   = glm::vec3(0.0f, 40.0f,  3.0f);
+        glm::vec3 m_cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);        
+        float m_yaw   = -90.0f;	
+        float m_pitch =  0.0f;
+
+        std::vector<float> m_vertices;
+        std::vector<unsigned int> m_indices;
+
 
         void initGLFW(){
             if(!glfwInit()){
@@ -127,11 +178,73 @@ class TerraNarrative{
         }
         
         void initTerrain(){
-            m_terrain.LoadFromFile("../assets/data/heightmap.save");
+
+            unsigned char *data = stbi_load("../assets/data/iceland_heightmap.png", &m_widthImg, &m_heightImg, &m_nrChannels, 0);
+            if (data)
+            {
+                std::cout << "Loaded heightmap of size " << m_heightImg << " x " << m_widthImg << std::endl;
+            }
+            else
+            {
+                std::cout << "Failed to load texture" << std::endl;
+            }
+
+
+
+            for(unsigned int i = 0; i < m_heightImg; i++)
+            {
+                for(unsigned int j = 0; j < m_widthImg; j++)
+                {
+                    // retrieve texel for (i,j) tex coord
+                    unsigned char* texel = data + (j + m_widthImg * i) * m_nrChannels;
+                    // raw eightImg at coordinate
+                    unsigned char y = texel[0];
+
+                    // vertex
+                    m_vertices.push_back( -m_heightImg/2.0f + i ); //scaling the x and z to -128 to 129 from 0 to 256 by adding -128
+                    m_vertices.push_back( (int)y * m_yScale - m_yShift); // v.y
+                    m_vertices.push_back( -m_widthImg/2.0f + j );        // v.z
+                }
+            }  
+            stbi_image_free(data);
+
+            for(unsigned int i = 0; i < m_heightImg-1; i++)       // for each row a.k.a. each strip
+            {
+                for(unsigned int j = 0; j < m_widthImg; j++)      // for each column
+                {
+                    for(unsigned int k = 0; k < 2; k++)      // for each side of the strip
+                    {
+                        m_indices.push_back(j + m_widthImg * (i + k));
+                    }
+                }
+            }    
+
+            m_numStrips = (m_heightImg-1)/m_resolution;
+            m_numTrisPerStrip = (m_widthImg/m_resolution)*2-2;
+
+            // PUTTIUNG THE m_vertices AND SHI INTO THE BUFFER
+
+            glGenVertexArrays(1,&m_VAO);
+            glBindVertexArray(m_VAO);
+            
+            glGenBuffers(1,&m_VBO);
+            glBindBuffer(GL_ARRAY_BUFFER,m_VBO);
+            glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(float), &m_vertices[0], GL_STATIC_DRAW);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glEnableVertexAttribArray(0);    
+
+
+            glGenBuffers(1,&m_IBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(unsigned int), &m_indices[0], GL_STATIC_DRAW);
+        }
+
+        void initShaders(){
+            shader = Shader(m_vertexShader,m_fragShader);                        
         }
 
         void initCamera(){
-            camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
+            camera = Camera(m_cameraPos, m_cameraUp,  m_yaw, m_pitch);
         }
 
         void renderScene(){
@@ -139,7 +252,13 @@ class TerraNarrative{
         }
 
         void setupGLFWCallbacks() {
+
+            glfwMakeContextCurrent(window);
+            glfwGetFramebufferSize(window,&WINDOW_WIDTH,&WINDOW_HEIGHT);            
             // Static wrapper functions that retrieve the instance
+
+            glfwSetWindowUserPointer(window, this);
+
             glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
                 glViewport(0, 0, width, height);
             });
@@ -178,7 +297,7 @@ class TerraNarrative{
                 m_lastX = xpos;
                 m_lastY = ypos;
 
-                camera.ProcessMouseMovement(xoffset, yoffset);
+                camera.ProcessMouseMovement(xoffset, yoffset, true);
             }
         }
 
@@ -193,9 +312,6 @@ int main(){
 
     app.init();    
     glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-    glFrontFace(GL_CW);
-    glCullFace(GL_BACK) ;
-    glEnable(GL_CULL_FACE) ;
     glEnable(GL_DEPTH_TEST);
     app.run();    
 

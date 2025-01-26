@@ -4,7 +4,6 @@ project(TerraNarrative)
 # Specify C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Debug)
 
 # macOS specific settings
 set(CMAKE_OSX_ARCHITECTURES "arm64")
@@ -24,9 +23,6 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     common/src/camera.cpp
     common/src/shader.cpp
-    common/src/terrain.cpp    
-    common/src/height_map.cpp    
-    common/src/utils.cpp
 )
 
 # Link libraries
@@ -45,3 +41,4 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${CMAKE_SOURCE_DIR}/common/include
 )
+

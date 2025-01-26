@@ -3,6 +3,8 @@
 #include <sstream>
 #include <iostream>
 
+Shader::Shader(){}
+
 Shader::Shader(const char* vertexPath, const char* fragmentPath)
 {
     std::string vertexCode;
@@ -42,6 +44,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
     glShaderSource(vertex, 1, &vShaderCode, NULL);
     glCompileShader(vertex);
     checkCompileErrors(vertex, "VERTEX");
+
 
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment, 1, &fShaderCode, NULL);
