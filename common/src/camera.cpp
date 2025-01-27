@@ -1,2 +1,0 @@
-
-#include <camera/camera.h>

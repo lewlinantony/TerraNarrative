@@ -10,8 +10,10 @@ set(CMAKE_OSX_ARCHITECTURES "arm64")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add GLAD library
-add_library(glad STATIC common/src/glad.c)
-target_include_directories(glad PUBLIC common/include)
+set(GLAD_DIR ${CMAKE_SOURCE_DIR}/include)
+add_library(glad STATIC ${GLAD_DIR}/glad.c)
+target_include_directories(glad PUBLIC ${GLAD_DIR})
+
 
 
 # Find required packages
@@ -20,9 +22,9 @@ find_package(glfw3 REQUIRED)
 
 # Add executable
 add_executable(${PROJECT_NAME} 
-    src/main.cpp
-    common/src/camera.cpp
-    common/src/shader.cpp
+    src/core/main.cpp
+    src/terrain/terrain.cpp
+    src/render/render.cpp
 )
 
 # Link libraries
@@ -39,6 +41,6 @@ target_link_libraries(${PROJECT_NAME}
 # Include directories
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    ${CMAKE_SOURCE_DIR}/common/include
+    ${CMAKE_SOURCE_DIR}/include
 )
 
