@@ -10,7 +10,6 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
 #include <terrain/terrain.h>
 #include <render/render.h>
 
@@ -37,8 +36,8 @@ class TerraNarrative{
         }
 
 
-        void processInput(GLFWwindow* window){
-            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
+        void processInput(GLFWwindow* window) {
+            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
                 glfwSetWindowShouldClose(window, true);
             }
 
@@ -65,11 +64,14 @@ class TerraNarrative{
                 glfwSetInputMode(window, GLFW_CURSOR, 
                     m_cursorEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
                 m_firstMouse = true;
+                
+                // Toggle ImGui input capture based on cursor state
+                ImGui::GetIO().ConfigFlags = m_cursorEnabled ? 0 : ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoKeyboard;
             }
             m_lastTabState = currentTabState;
             
-            if (!m_cursorEnabled && !ImGui::GetIO().WantCaptureMouse) {
-                float cameraSpeed = 2.5f * m_deltaTime;
+            // Process WASD input when cursor is disabled
+            if (!m_cursorEnabled) {
                 if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
                     camera.ProcessKeyboard(FORWARD, m_deltaTime);
                 if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -127,17 +129,20 @@ class TerraNarrative{
             ImGui::End();
         }
 
-        void run(){
-            while(!glfwWindowShouldClose(window)){
+        void run() {
+            while(!glfwWindowShouldClose(window)) {
                 float currentFrame = static_cast<float>(glfwGetTime());
                 m_deltaTime = currentFrame - m_lastFrame;
                 m_lastFrame = currentFrame;
 
                 processInput(window);
 
-                m_renderer->render();
-                renderImGuiControls();
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+                m_renderer->render();
+                
+                // Always render ImGui
+                renderImGuiControls();
                 ImGui::Render();
                 ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
