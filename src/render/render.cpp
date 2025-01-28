@@ -10,6 +10,7 @@ void Renderer::render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_shader.use();
+
     setupMatrices();
 
     m_terrain.render();
@@ -24,4 +25,7 @@ void Renderer::setupMatrices() {
 
     glm::mat4 model = glm::mat4(1.0f);
     m_shader.setMat4("model", model);
+
+    glm::vec3 color = glm::vec3(0.0157, 0.5294, 0.1176);;
+    m_shader.setVec3("color", color);
 }

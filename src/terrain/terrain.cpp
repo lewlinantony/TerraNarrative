@@ -122,7 +122,7 @@ void Terrain::setupBuffers() {
 
 void Terrain::render() const {
     glBindVertexArray(m_VAO);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
     
     for(unsigned strip = 0; strip < m_numStrips; strip++) {
         glDrawElements(
