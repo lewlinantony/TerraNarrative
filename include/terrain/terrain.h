@@ -5,6 +5,9 @@
 #include <vector>
 #include <stdexcept>
 #include <stb/stb_image.h>
+#include <perlin_noise/PerlinNoise.hpp>
+#include <vector>
+
 
 class Terrain {
 private:
@@ -17,24 +20,31 @@ private:
     int m_resolution;
     int m_numStrips;
     int m_numTrisPerStrip;
+    float m_frequency;
+    float m_noiseValue;
+    float m_amplitude;
+    float m_totalAmplitude;
+    unsigned int m_seed; 
+    siv::PerlinNoise perlin; // Seed
+
 
 public:
     // Default constructor
     Terrain();
     
     // Parameterized constructor
-    Terrain(float yScale, float yShift, int resolution);
+    Terrain(float yScale, float yShift, int resolution, int width, int height, float frequency=0.1f, float noiseValue=0.0f, float amplitude=1.0f, float totalAmplitude=0.0f);
     
     // Delete copy constructor and assignment operator
     Terrain(const Terrain&) = delete;
     Terrain& operator=(const Terrain&) = delete;
     
-    void loadHeightmap(const char* path);
+    void loadHeightmap();
     void render() const;
     ~Terrain();
 
 private:
-    void generateVertices(unsigned char* data);
+    void generateVertices(std::vector<std::vector<float>> heightMap);
     void generateIndices();
     void setupBuffers();
     void initializeGLBuffers();

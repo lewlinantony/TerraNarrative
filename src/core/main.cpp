@@ -13,6 +13,7 @@
 #include <terrain/terrain.h>
 #include <render/render.h>
 
+
 int WINDOW_WIDTH = 800;
 int WINDOW_HEIGHT = 600;
 float ASPECT_RATIO = static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT;
@@ -69,6 +70,21 @@ class TerraNarrative{
                 ImGui::GetIO().ConfigFlags = m_cursorEnabled ? 0 : ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoKeyboard;
             }
             m_lastTabState = currentTabState;
+
+            
+            bool currentEState = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+
+            if (currentEState && !m_lastEState) {
+                m_isWireframe = !m_isWireframe;
+            }
+            m_lastEState = currentEState;
+
+            // Update the polygon mode based on the wireframe toggle
+            if (m_isWireframe) {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            } else {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
             
             // Process WASD input when cursor is disabled
             if (!m_cursorEnabled) {
@@ -80,6 +96,7 @@ class TerraNarrative{
                     camera.ProcessKeyboard(LEFT, m_deltaTime);
                 if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
                     camera.ProcessKeyboard(RIGHT, m_deltaTime);
+
             }
         }
 
@@ -92,7 +109,7 @@ class TerraNarrative{
             
             // Terrain parameters
             bool paramsChanged = false;
-            paramsChanged |= ImGui::SliderFloat("Height Scale", &m_yScale, 0.0f, 1.0f, "%.3f");
+            paramsChanged |= ImGui::SliderFloat("Height Scale", &m_yScale, 4.0f, 16.0f, "%.3f");
             paramsChanged |= ImGui::SliderFloat("Height Shift", &m_yShift, 0.0f, 32.0f, "%.1f");
             paramsChanged |= ImGui::SliderInt("Resolution", &m_resolution, 1, 10);
             
@@ -119,6 +136,7 @@ class TerraNarrative{
                 } else {
                     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
                 }
+
             }
 
             // Performance metrics
@@ -176,6 +194,7 @@ class TerraNarrative{
         int m_windowed_x = 0;
         int m_windowed_y = 0;
         bool m_lastFState = false;
+        bool m_lastEState = false;
 
         float m_deltaTime = 0.0f;
         float m_lastFrame = 0.0f; // Time of last frame
@@ -192,9 +211,12 @@ class TerraNarrative{
         int m_numStrips;
         int m_numTrisPerStrip;
 
-        float m_yScale = 64.0f / 256.0f;
-        float m_yShift = 16.0f;  
+        float m_yScale = 7.0f;
+        float m_yShift = 4.0f;  
         int m_resolution = 1;
+
+        int m_noiseWidth = 100;
+        int m_noiseHeight = 100;
 
 
         float m_near  =  0.1f;
@@ -253,8 +275,9 @@ class TerraNarrative{
         
         void initTerrain(){
             try {
-                m_terrain = new Terrain(m_yScale, m_yShift, m_resolution);
-                m_terrain->loadHeightmap(m_heightMapPath);
+                m_terrain = new Terrain(m_yScale, m_yShift, m_resolution, m_noiseWidth, m_noiseHeight);
+                
+                m_terrain->loadHeightmap();
             } catch (const std::runtime_error& e) {
                 std::cerr << "Failed to load terrain: " << e.what() << std::endl;
                 throw;
