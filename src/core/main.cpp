@@ -109,11 +109,28 @@ class TerraNarrative{
             
             // Terrain parameters
             bool paramsChanged = false;
+            bool terrainTypeChanged = false;
+            
+            // Use the member array directly for terrain type selection
+            terrainTypeChanged = ImGui::Combo("Terrain Type", &m_terrainType, m_terrainTypes, IM_ARRAYSIZE(m_terrainTypes));
+            
+            // Add terrain parameters
             paramsChanged |= ImGui::SliderFloat("Height Scale", &m_yScale, 4.0f, 16.0f, "%.3f");
             paramsChanged |= ImGui::SliderFloat("Height Shift", &m_yShift, 0.0f, 32.0f, "%.1f");
             paramsChanged |= ImGui::SliderInt("Resolution", &m_resolution, 1, 10);
             
-            if (paramsChanged) {
+            // Add generator-specific parameters
+            if (m_terrainType == PERLIN_NOISE) { // Perlin Noise
+                paramsChanged |= ImGui::SliderFloat("Frequency", &m_noiseFrequency, 0.01f, 0.5f, "%.3f");
+                paramsChanged |= ImGui::SliderInt("Octaves", &m_noiseOctaves, 1, 8);
+                paramsChanged |= ImGui::SliderFloat("Persistence", &m_noisePersistence, 0.1f, 0.9f, "%.2f");
+            } else { // Fault Formation
+                paramsChanged |= ImGui::SliderInt("Iterations", &m_faultIterations, 50, 500);
+                paramsChanged |= ImGui::SliderFloat("Min Delta", &m_faultMinDelta, 0.001f, 0.1f, "%.3f");
+                paramsChanged |= ImGui::SliderFloat("Max Delta", &m_faultMaxDelta, 0.1f, 0.5f, "%.3f");
+            }
+
+            if (paramsChanged || terrainTypeChanged) {
                 // Recreate terrain with new parameters
                 delete m_terrain;
                 initTerrain();
@@ -199,8 +216,6 @@ class TerraNarrative{
         float m_deltaTime = 0.0f;
         float m_lastFrame = 0.0f; // Time of last frame
 
-
-
         bool m_isWireframe = false; 
         double m_lastX = WINDOW_WIDTH / 2.0;
         double m_lastY = WINDOW_HEIGHT / 2.0;
@@ -218,14 +233,24 @@ class TerraNarrative{
         int m_noiseWidth = 100;
         int m_noiseHeight = 100;
 
+        int m_terrainType = 0;
+        const char* m_terrainTypes[2] = { "Perlin Noise", "Fault Formation" };
+        enum TerrainGenerationType {
+            PERLIN_NOISE = 0,
+            FAULT_FORMATION = 1
+        };        
+        float m_noiseFrequency = 0.1f;
+        int m_noiseOctaves = 5;
+        float m_noisePersistence = 0.5f;
+        int m_faultIterations = 200;
+        float m_faultMinDelta = 0.01f;
+        float m_faultMaxDelta = 0.15f;
 
         float m_near  =  0.1f;
         float m_far   =  1000.0f;        
 
         const char* m_vertexShader = "../assets/shaders/terrain.vert";
         const char* m_fragShader = "../assets/shaders/terrain.frag";     
-
-        const char* m_heightMapPath = "../assets/data/iceland_heightmap.png";
         
         GLuint m_VAO,m_VBO,m_IBO;
 
@@ -273,15 +298,22 @@ class TerraNarrative{
             }
         }
         
-        void initTerrain(){
+        void initTerrain() {
             try {
+                // Create the terrain with existing parameters
                 m_terrain = new Terrain(m_yScale, m_yShift, m_resolution, m_noiseWidth, m_noiseHeight);
                 
-                m_terrain->loadHeightmap();
+                // Determine the generation type based on m_terrainType
+                Terrain::GenerationType genType = (m_terrainType == PERLIN_NOISE) ? 
+                    Terrain::GenerationType::PERLIN_NOISE : 
+                    Terrain::GenerationType::FAULT_FORMATION;
+                
+                // Generate the terrain using the selected type
+                m_terrain->generateTerrain(genType);
             } catch (const std::runtime_error& e) {
                 std::cerr << "Failed to load terrain: " << e.what() << std::endl;
                 throw;
-            }                
+            }
         }
 
         void initShaders(){

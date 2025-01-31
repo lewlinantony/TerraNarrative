@@ -1,19 +1,24 @@
 #include <render/render.h>
-#include <camera/camera.h>
-#include <load_shader/shader.h>
 
 Renderer::Renderer(Camera& camera, Shader& shader, Terrain& terrain, float aspectRatio)
-    : m_camera(camera), m_shader(shader), m_terrain(terrain), m_aspectRatio(aspectRatio) {}
+    : m_camera(camera)
+    , m_shader(shader)
+    , m_terrain(terrain)
+    , m_aspectRatio(aspectRatio) {
+}
 
 void Renderer::render() {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_shader.use();
-
     setupMatrices();
-
+    m_shader.setVec3("color", m_terrainColor);
     m_terrain.render();
+}
+
+void Renderer::setTerrainColor(const glm::vec3& color) {
+    m_terrainColor = color;
 }
 
 void Renderer::setupMatrices() {
@@ -25,7 +30,4 @@ void Renderer::setupMatrices() {
 
     glm::mat4 model = glm::mat4(1.0f);
     m_shader.setMat4("model", model);
-
-    glm::vec3 color = glm::vec3(0.0157, 0.5294, 0.1176);;
-    m_shader.setVec3("color", color);
 }

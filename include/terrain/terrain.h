@@ -1,53 +1,81 @@
-#ifndef TERRA_NARRATIVE_TERRAIN_H
-#define TERRA_NARRATIVE_TERRAIN_H
+#pragma once
 
 #include <glad/glad.h>
 #include <vector>
-#include <stdexcept>
-#include <stb/stb_image.h>
+#include <memory>
 #include <perlin_noise/PerlinNoise.hpp>
-#include <vector>
 
+// Abstract base class for terrain generation algorithms
+class TerrainGenerator {
+public:
+    virtual ~TerrainGenerator() = default;
+    virtual void generateHeightMap(std::vector<std::vector<float>>& heightMap) = 0;
+};
+
+// Perlin noise terrain generator
+class PerlinNoiseGenerator : public TerrainGenerator {
+public:
+    PerlinNoiseGenerator(float frequency = 0.1f, int octaves = 5, float persistence = 0.5f);
+    void generateHeightMap(std::vector<std::vector<float>>& heightMap) override;
+
+private:
+    float m_frequency;
+    int m_octaves;
+    float m_persistence;
+    unsigned int m_seed;
+    siv::PerlinNoise perlin;
+};
+
+// Fault formation terrain generator
+class FaultFormationGenerator : public TerrainGenerator {
+public:
+    FaultFormationGenerator(int iterations = 200, float minDelta = 0.01f, float maxDelta = 0.15f);
+    void generateHeightMap(std::vector<std::vector<float>>& heightMap) override;
+
+private:
+    int m_iterations;
+    float m_minDelta;
+    float m_maxDelta;
+    void createFault(std::vector<std::vector<float>>& heightMap);
+};
 
 class Terrain {
+public:
+    enum class GenerationType {
+        PERLIN_NOISE,
+        FAULT_FORMATION
+    };
+
+    Terrain();
+    Terrain(float yScale, float yShift, int resolution, int width, int height);
+    ~Terrain();
+
+    void generateTerrain(GenerationType type);
+    void render() const;
+
 private:
+    // OpenGL buffers
     GLuint m_VAO, m_VBO, m_IBO;
-    std::vector<float> m_vertices;
-    std::vector<unsigned int> m_indices;
-    int m_width, m_height, m_channels;
-    float m_yScale;
-    float m_yShift;
+    
+    // Terrain parameters
+    int m_width, m_height;
+    float m_yScale, m_yShift;
     int m_resolution;
     int m_numStrips;
     int m_numTrisPerStrip;
-    float m_frequency;
-    float m_noiseValue;
-    float m_amplitude;
-    float m_totalAmplitude;
-    unsigned int m_seed; 
-    siv::PerlinNoise perlin; // Seed
 
+    // Data storage
+    std::vector<float> m_vertices;
+    std::vector<unsigned int> m_indices;
+    std::vector<std::vector<float>> heightMap;
 
-public:
-    // Default constructor
-    Terrain();
+    // Terrain generators
+    std::unique_ptr<TerrainGenerator> m_currentGenerator;
     
-    // Parameterized constructor
-    Terrain(float yScale, float yShift, int resolution, int width, int height, float frequency=0.1f, float noiseValue=0.0f, float amplitude=1.0f, float totalAmplitude=0.0f);
-    
-    // Delete copy constructor and assignment operator
-    Terrain(const Terrain&) = delete;
-    Terrain& operator=(const Terrain&) = delete;
-    
-    void loadHeightmap();
-    void render() const;
-    ~Terrain();
-
-private:
-    void generateVertices(std::vector<std::vector<float>> heightMap);
+    // Internal methods
+    void initializeGLBuffers();
+    void generateVertices();
     void generateIndices();
     void setupBuffers();
-    void initializeGLBuffers();
+    void setTerrainGenerator(GenerationType type);
 };
-
-#endif
