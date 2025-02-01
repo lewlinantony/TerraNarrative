@@ -109,13 +109,102 @@ void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>&
 }
 
 
-
-// Terrain Implementation
-Terrain::Terrain()
-    : Terrain(4.0f, 4.0f, 1, 1000, 1000, 5, 0.5f, 0.02f, 100, 0.1f, 1.0f) {
+//Midpoint Displacement Implementation
+MidpointDisplacementGenerator::MidpointDisplacementGenerator(float roughness, float initialDisplacement)
+    : m_roughness(roughness)
+    , m_initialDisplacement(initialDisplacement) {
 }
 
-Terrain::Terrain(float yScale, float yShift, int resolution, int width, int height, int octaves, float persistence, float frequency, int iterations, float minDelta, float maxDelta)
+float MidpointDisplacementGenerator::getAverageHeight(
+    const std::vector<std::vector<float>>& heightMap, 
+    int x, int z, 
+    int size
+) {
+    float sum = 0.0f;
+    int count = 0;
+    int width = heightMap.size();
+
+    // Check all four corners if they're within bounds
+    if (x - size >= 0 && z - size >= 0) { 
+        sum += heightMap[x - size][z - size]; 
+        count++; 
+    }
+    if (x - size >= 0 && z + size < width) { 
+        sum += heightMap[x - size][z + size]; 
+        count++; 
+    }
+    if (x + size < width && z - size >= 0) { 
+        sum += heightMap[x + size][z - size]; 
+        count++; 
+    }
+    if (x + size < width && z + size < width) { 
+        sum += heightMap[x + size][z + size]; 
+        count++; 
+    }
+
+    return sum / count;
+}
+
+void MidpointDisplacementGenerator::diamondStep(
+    std::vector<std::vector<float>>& heightMap, 
+    int size, 
+    float displacement
+) {
+    int half = size / 2;
+    int width = heightMap.size();
+
+    for (int x = half; x < width; x += size) {
+        for (int z = half; z < width; z += size) {
+            float average = getAverageHeight(heightMap, x, z, half);
+            heightMap[x][z] = average + displacement * (((float)rand() / RAND_MAX) * 2 - 1);
+        }
+    }
+}
+
+void MidpointDisplacementGenerator::squareStep(
+    std::vector<std::vector<float>>& heightMap, 
+    int size, 
+    float displacement
+) {
+    int half = size / 2;
+    int width = heightMap.size();
+
+    for (int x = 0; x < width; x += half) {
+        for (int z = (x + half) % size; z < width; z += size) {
+            float average = getAverageHeight(heightMap, x, z, half);
+            heightMap[x][z] = average + displacement * (((float)rand() / RAND_MAX) * 2 - 1);
+        }
+    }
+}
+
+void MidpointDisplacementGenerator::generateHeightMap(std::vector<std::vector<float>>& heightMap) {
+    int width = heightMap.size();
+    
+    // Initialize corners with random values
+    heightMap[0][0] = ((float)rand() / RAND_MAX) * 2 - 1;
+    heightMap[0][width-1] = ((float)rand() / RAND_MAX) * 2 - 1;
+    heightMap[width-1][0] = ((float)rand() / RAND_MAX) * 2 - 1;
+    heightMap[width-1][width-1] = ((float)rand() / RAND_MAX) * 2 - 1;
+
+    // Main generation loop
+    float displacement = m_initialDisplacement;
+    for (int size = width - 1; size > 1; size /= 2) {
+        diamondStep(heightMap, size, displacement);
+        squareStep(heightMap, size, displacement);
+        displacement *= pow(2, -m_roughness);
+    }
+}
+
+
+
+// Terrain Implementation
+Terrain::Terrain() = default;
+
+Terrain::Terrain(float yScale, float yShift, int resolution,
+                 int width, int height,
+                 int octaves, float persistence, float frequency,
+                 int iterations, float minDelta, float maxDelta,
+                 float roughness, float initialDisplacement)
     : m_VAO(0)
     , m_VBO(0)
     , m_IBO(0)
@@ -131,7 +220,9 @@ Terrain::Terrain(float yScale, float yShift, int resolution, int width, int heig
     , m_frequency(frequency)
     , m_iterations(iterations)
     , m_minDelta(minDelta)
-    , m_maxDelta(maxDelta)    
+    , m_maxDelta(maxDelta)
+    , m_roughness(roughness)
+    , m_initialDisplacement(initialDisplacement)
     , heightMap(width, std::vector<float>(height)) {
     initializeGLBuffers();
 }
@@ -143,6 +234,9 @@ void Terrain::setTerrainGenerator(GenerationType type) {
             break;
         case GenerationType::FAULT_FORMATION:
             m_currentGenerator = std::make_unique<FaultFormationGenerator>(m_iterations, m_minDelta, m_maxDelta);
+            break;
+        case GenerationType::MIDPOINT_DISPLACEMENT:
+            m_currentGenerator = std::make_unique<MidpointDisplacementGenerator>(0.5f, 1.0f);
             break;
         default:
             throw std::runtime_error("Unknown terrain generation type");

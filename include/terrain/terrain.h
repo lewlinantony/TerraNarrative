@@ -41,15 +41,34 @@ private:
     void createFault(std::vector<std::vector<float>>& heightMap);
 };
 
+class MidpointDisplacementGenerator : public TerrainGenerator {
+public:
+    MidpointDisplacementGenerator(float roughness = 0.5f, float initialDisplacement = 1.0f);
+    void generateHeightMap(std::vector<std::vector<float>>& heightMap) override;
+
+private:
+    float m_roughness;
+    float m_initialDisplacement;
+    void diamondStep(std::vector<std::vector<float>>& heightMap, int size, float displacement);
+    void squareStep(std::vector<std::vector<float>>& heightMap, int size, float displacement);
+    float getAverageHeight(const std::vector<std::vector<float>>& heightMap, int x, int z, int size);
+};
+
 class Terrain {
 public:
     enum class GenerationType {
         PERLIN_NOISE,
-        FAULT_FORMATION
+        FAULT_FORMATION,
+        MIDPOINT_DISPLACEMENT
     };
 
     Terrain();
-    Terrain(float yScale, float yShift, int resolution, int width, int height, int octaves, float persistence, float frequency, int iterations, float minDelta, float maxDelta);    ~Terrain();
+    Terrain(float yScale, float yShift, int resolution, 
+            int width, int height,
+            int octaves, float persistence, float frequency,
+            int iterations, float minDelta, float maxDelta,
+            float roughness, float initialDisplacement);
+    ~Terrain();
 
     void initTexture(Shader& shader, const std::vector<const char*>& texturePaths);
     void generateTerrain(GenerationType type);
@@ -72,6 +91,10 @@ private:
     //Fault Formation
     int m_iterations;
     float m_minDelta, m_maxDelta;
+
+    //midpoint displacement
+    float m_roughness;
+    float m_initialDisplacement;    
 
     // Data storage
     std::vector<float> m_vertexArray;
