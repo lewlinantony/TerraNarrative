@@ -1,7 +1,5 @@
 #include <terrain/terrain.h>
-#include <stdexcept>
-#include <random>
-#include <cmath>
+
 
 // PerlinNoiseGenerator Implementation
 PerlinNoiseGenerator::PerlinNoiseGenerator(float frequency, int octaves, float persistence)
@@ -112,10 +110,10 @@ void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>&
 
 // Terrain Implementation
 Terrain::Terrain()
-    : Terrain(4.0f, 4.0f, 1, 1000, 1000) {
+    : Terrain(4.0f, 4.0f, 1, 1000, 1000, 5, 0.5f, 0.02f, 100, 0.1f, 1.0f) {
 }
 
-Terrain::Terrain(float yScale, float yShift, int resolution, int width, int height)
+Terrain::Terrain(float yScale, float yShift, int resolution, int width, int height, int octaves, float persistence, float frequency, int iterations, float minDelta, float maxDelta)
     : m_VAO(0)
     , m_VBO(0)
     , m_IBO(0)
@@ -126,6 +124,12 @@ Terrain::Terrain(float yScale, float yShift, int resolution, int width, int heig
     , m_resolution(resolution)
     , m_numStrips(0)
     , m_numTrisPerStrip(0)
+    , m_octaves(octaves)
+    , m_persistence(persistence)
+    , m_frequency(frequency)
+    , m_iterations(iterations)
+    , m_minDelta(minDelta)
+    , m_maxDelta(maxDelta)    
     , heightMap(width, std::vector<float>(height)) {
     initializeGLBuffers();
 }
@@ -133,10 +137,10 @@ Terrain::Terrain(float yScale, float yShift, int resolution, int width, int heig
 void Terrain::setTerrainGenerator(GenerationType type) {
     switch(type) {
         case GenerationType::PERLIN_NOISE:
-            m_currentGenerator = std::make_unique<PerlinNoiseGenerator>();
+            m_currentGenerator = std::make_unique<PerlinNoiseGenerator>(m_frequency, m_octaves, m_persistence);
             break;
         case GenerationType::FAULT_FORMATION:
-            m_currentGenerator = std::make_unique<FaultFormationGenerator>();
+            m_currentGenerator = std::make_unique<FaultFormationGenerator>(m_iterations, m_minDelta, m_maxDelta);
             break;
         default:
             throw std::runtime_error("Unknown terrain generation type");
@@ -153,7 +157,7 @@ void Terrain::generateTerrain(GenerationType type) {
     m_currentGenerator->generateHeightMap(heightMap);
     
     try {
-        generateVertices();
+        generateVertexArray();
         generateIndices();
         setupBuffers();
     } catch (const std::exception& e) {
@@ -167,17 +171,18 @@ void Terrain::initializeGLBuffers() {
     glGenBuffers(1, &m_IBO);
 }
 
-void Terrain::generateVertices() {
-    m_vertices.clear();
-    m_vertices.reserve(m_width * m_height * 3);
+void Terrain::generateVertexArray() {
+    m_vertexArray.clear();
+    m_vertexArray.reserve(m_width * m_height * 5);
 
     for(int x = 0; x < m_height; x++) {
         for(int z = 0; z < m_width; z++) {
-            float height = heightMap[x][z] * m_yScale - m_yShift;
-            
-            m_vertices.push_back(-m_height/2.0f + x);
-            m_vertices.push_back(height);
-            m_vertices.push_back(-m_width/2.0f + z);
+            float height = heightMap[x][z] * m_yScale - m_yShift;            
+            m_vertexArray.push_back(-m_height/2.0f + x);
+            m_vertexArray.push_back(height);
+            m_vertexArray.push_back(-m_width/2.0f + z);
+            m_vertexArray.push_back(static_cast<float>(x) / (m_height - 1) * 10);
+            m_vertexArray.push_back(static_cast<float>(z) / (m_width - 1) * 10);
         }
     }
 }
@@ -199,19 +204,54 @@ void Terrain::generateIndices() {
 }
 
 void Terrain::setupBuffers() {
-    if (m_vertices.empty() || m_indices.empty()) {
+    if (m_vertexArray.empty() || m_indices.empty()) {
         throw std::runtime_error("No vertex or index data to upload to GPU");
     }
 
     glBindVertexArray(m_VAO);
     
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-    glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(float), m_vertices.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glBufferData(GL_ARRAY_BUFFER, m_vertexArray.size() * sizeof(float), m_vertexArray.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);    
+
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);       
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(unsigned int), m_indices.data(), GL_STATIC_DRAW);
+  
+
+}
+
+void Terrain::initTexture(Shader& shader, const char* texturePath){
+    unsigned int texture1;
+    glGenTextures(1, &texture1);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    int widthImg, heightImg, nrChannels;
+    unsigned char *data = stbi_load(texturePath, &widthImg, &heightImg, &nrChannels, 0);
+
+    if(data){
+        std::cout<<"yes texture1"<<std::endl;
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, widthImg, heightImg, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else{
+        std::cout<<"no texture1";
+    }    
+
+    stbi_image_free(data);
+
+    shader.use();
+    shader.setInt("ourTexture1", 0);
+
 }
 
 void Terrain::render() const {

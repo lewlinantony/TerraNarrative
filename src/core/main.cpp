@@ -126,8 +126,13 @@ class TerraNarrative{
                 paramsChanged |= ImGui::SliderFloat("Persistence", &m_noisePersistence, 0.1f, 0.9f, "%.2f");
             } else { // Fault Formation
                 paramsChanged |= ImGui::SliderInt("Iterations", &m_faultIterations, 50, 500);
-                paramsChanged |= ImGui::SliderFloat("Min Delta", &m_faultMinDelta, 0.001f, 0.1f, "%.3f");
-                paramsChanged |= ImGui::SliderFloat("Max Delta", &m_faultMaxDelta, 0.1f, 0.5f, "%.3f");
+                paramsChanged |= ImGui::SliderFloat("Min Delta", &m_faultMinDelta, 0.001f, 0.1f);
+                paramsChanged |= ImGui::SliderFloat("Max Delta", &m_faultMaxDelta, 0.1f, 0.5f);
+            }
+
+            if (m_faultMinDelta > m_faultMaxDelta) {
+                m_faultMinDelta = m_faultMaxDelta;
+                paramsChanged = true;
             }
 
             if (paramsChanged || terrainTypeChanged) {
@@ -223,15 +228,9 @@ class TerraNarrative{
         int m_heightImg;
         int m_nrChannels;
 
-        int m_numStrips;
-        int m_numTrisPerStrip;
 
-        float m_yScale = 7.0f;
-        float m_yShift = 4.0f;  
-        int m_resolution = 1;
-
-        int m_noiseWidth = 100;
-        int m_noiseHeight = 100;
+        int m_mapWidth = 300;
+        int m_mapHeight = 300;
 
         int m_terrainType = 0;
         const char* m_terrainTypes[2] = { "Perlin Noise", "Fault Formation" };
@@ -239,9 +238,16 @@ class TerraNarrative{
             PERLIN_NOISE = 0,
             FAULT_FORMATION = 1
         };        
+
+        int m_numStrips;
+        int m_numTrisPerStrip;
+        float m_yScale = 7.0f;
+        float m_yShift = 4.0f;  
+        int m_resolution = 1;
         float m_noiseFrequency = 0.1f;
         int m_noiseOctaves = 5;
         float m_noisePersistence = 0.5f;
+
         int m_faultIterations = 200;
         float m_faultMinDelta = 0.01f;
         float m_faultMaxDelta = 0.15f;
@@ -251,6 +257,7 @@ class TerraNarrative{
 
         const char* m_vertexShader = "../assets/shaders/terrain.vert";
         const char* m_fragShader = "../assets/shaders/terrain.frag";     
+        const char* m_texturePath = "../assets/data/terrain.png";
         
         GLuint m_VAO,m_VBO,m_IBO;
 
@@ -301,7 +308,8 @@ class TerraNarrative{
         void initTerrain() {
             try {
                 // Create the terrain with existing parameters
-                m_terrain = new Terrain(m_yScale, m_yShift, m_resolution, m_noiseWidth, m_noiseHeight);
+                m_terrain = new Terrain(m_yScale, m_yShift, m_resolution, m_mapWidth, m_mapHeight, m_noiseOctaves, m_noisePersistence, m_noiseFrequency, m_faultIterations, m_faultMinDelta, m_faultMaxDelta);
+                m_terrain->initTexture(shader, m_texturePath);            
                 
                 // Determine the generation type based on m_terrainType
                 Terrain::GenerationType genType = (m_terrainType == PERLIN_NOISE) ? 
@@ -339,6 +347,9 @@ class TerraNarrative{
 
         void initRenderer(){
             m_renderer = new Renderer(camera, shader, *m_terrain, ASPECT_RATIO);
+            if (!m_renderer) {
+                throw std::runtime_error("Failed to create renderer");
+            }            
         }
 
         void setupGLFWCallbacks() {
@@ -351,6 +362,7 @@ class TerraNarrative{
 
             glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
                 glViewport(0, 0, width, height);
+                ASPECT_RATIO = static_cast<float>(width) / height;
             });
 
             glfwSetMouseButtonCallback(window, [](GLFWwindow* w, int button, int action, int mods) {

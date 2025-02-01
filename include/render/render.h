@@ -1,5 +1,5 @@
 #pragma once
-
+#include <iostream>
 #include <camera/camera.h>
 #include <load_shader/shader.h>
 #include <terrain/terrain.h>
@@ -20,5 +20,5 @@ private:
     float m_aspectRatio;
     float m_near = 0.1f;
     float m_far = 1000.0f;
-    glm::vec3 m_terrainColor = glm::vec3(0.0157f, 0.5294f, 0.1176f);
+    glm::vec3 m_terrainColor = glm::vec3(1.0, 1.0,1.0); // glm::vec3(0.0157f, 0.5294f, 0.1176f);
 };

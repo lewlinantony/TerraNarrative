@@ -3,7 +3,9 @@
 #include <glad/glad.h>
 #include <vector>
 #include <memory>
+#include <stb/stb_image.h>
 #include <perlin_noise/PerlinNoise.hpp>
+#include <load_shader/shader.h>
 
 // Abstract base class for terrain generation algorithms
 class TerrainGenerator {
@@ -47,9 +49,9 @@ public:
     };
 
     Terrain();
-    Terrain(float yScale, float yShift, int resolution, int width, int height);
-    ~Terrain();
+    Terrain(float yScale, float yShift, int resolution, int width, int height, int octaves, float persistence, float frequency, int iterations, float minDelta, float maxDelta);    ~Terrain();
 
+    void initTexture(Shader& shader, const char* texturePath);
     void generateTerrain(GenerationType type);
     void render() const;
 
@@ -57,15 +59,22 @@ private:
     // OpenGL buffers
     GLuint m_VAO, m_VBO, m_IBO;
     
-    // Terrain parameters
     int m_width, m_height;
+
+    // Perlin Noise
     float m_yScale, m_yShift;
     int m_resolution;
     int m_numStrips;
     int m_numTrisPerStrip;
+    int m_octaves;
+    float m_persistence,m_frequency;
+
+    //Fault Formation
+    int m_iterations;
+    float m_minDelta, m_maxDelta;
 
     // Data storage
-    std::vector<float> m_vertices;
+    std::vector<float> m_vertexArray;
     std::vector<unsigned int> m_indices;
     std::vector<std::vector<float>> heightMap;
 
@@ -74,7 +83,7 @@ private:
     
     // Internal methods
     void initializeGLBuffers();
-    void generateVertices();
+    void generateVertexArray();
     void generateIndices();
     void setupBuffers();
     void setTerrainGenerator(GenerationType type);

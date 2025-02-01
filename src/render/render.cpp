@@ -1,5 +1,6 @@
 #include <render/render.h>
 
+
 Renderer::Renderer(Camera& camera, Shader& shader, Terrain& terrain, float aspectRatio)
     : m_camera(camera)
     , m_shader(shader)
