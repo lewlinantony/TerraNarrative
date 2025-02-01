@@ -12,6 +12,7 @@
 #include <imgui_impl_opengl3.h>
 #include <terrain/terrain.h>
 #include <render/render.h>
+#include <vector>
 
 
 int WINDOW_WIDTH = 800;
@@ -257,7 +258,8 @@ class TerraNarrative{
 
         const char* m_vertexShader = "../assets/shaders/terrain.vert";
         const char* m_fragShader = "../assets/shaders/terrain.frag";     
-        const char* m_texturePath = "../assets/data/terrain.png";
+        std::vector<const char*> m_texturePath = {"../assets/data/grass.png", 
+                                                    "../assets/data/rock.png"};
         
         GLuint m_VAO,m_VBO,m_IBO;
 

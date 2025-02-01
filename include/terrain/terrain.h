@@ -51,7 +51,7 @@ public:
     Terrain();
     Terrain(float yScale, float yShift, int resolution, int width, int height, int octaves, float persistence, float frequency, int iterations, float minDelta, float maxDelta);    ~Terrain();
 
-    void initTexture(Shader& shader, const char* texturePath);
+    void initTexture(Shader& shader, const std::vector<const char*>& texturePaths);
     void generateTerrain(GenerationType type);
     void render() const;
 

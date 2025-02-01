@@ -108,6 +108,8 @@ void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>&
     }
 }
 
+
+
 // Terrain Implementation
 Terrain::Terrain()
     : Terrain(4.0f, 4.0f, 1, 1000, 1000, 5, 0.5f, 0.02f, 100, 0.1f, 1.0f) {
@@ -221,36 +223,40 @@ void Terrain::setupBuffers() {
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(unsigned int), m_indices.data(), GL_STATIC_DRAW);
-  
+    
+    
 
 }
 
-void Terrain::initTexture(Shader& shader, const char* texturePath){
-    unsigned int texture1;
-    glGenTextures(1, &texture1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    int widthImg, heightImg, nrChannels;
-    unsigned char *data = stbi_load(texturePath, &widthImg, &heightImg, &nrChannels, 0);
-
-    if(data){
-        std::cout<<"yes texture1"<<std::endl;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, widthImg, heightImg, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else{
-        std::cout<<"no texture1";
-    }    
-
-    stbi_image_free(data);
-
+void Terrain::initTexture(Shader& shader, const std::vector<const char*>& texturePaths) {
+    unsigned int textures[texturePaths.size()];  
+    glGenTextures(texturePaths.size(), textures);
     shader.use();
-    shader.setInt("ourTexture1", 0);
+
+    for(int i=0; i< texturePaths.size(); i++){
+        glActiveTexture(GL_TEXTURE0 + i); //
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        int widthImg, heightImg, nrChannels;
+        unsigned char *data = stbi_load(texturePaths[i], &widthImg, &heightImg, &nrChannels, 0);
+
+        if(data){
+            std::cout<<"yes texture"<<std::to_string(i)<<std::endl;
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, widthImg, heightImg, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+        }
+        else{
+            std::cout<<"no texture"<<std::to_string(i)<<std::endl;
+        }    
+
+        stbi_image_free(data);  
+        shader.setInt("ourTexture"+std::to_string(i+1), i);
+    }
 
 }
 
@@ -258,6 +264,7 @@ void Terrain::render() const {
     glBindVertexArray(m_VAO);
     
     for(unsigned strip = 0; strip < m_numStrips; strip++) {
+        
         glDrawElements(
             GL_TRIANGLE_STRIP,
             m_numTrisPerStrip + 2,
