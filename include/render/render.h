@@ -9,7 +9,6 @@ class Renderer {
 public:
     Renderer(Camera& camera, Shader& shader, Terrain& terrain, float aspectRatio);
     void render();
-    void setTerrainColor(const glm::vec3& color);
 
 private:
     void setupMatrices();
@@ -20,5 +19,4 @@ private:
     float m_aspectRatio;
     float m_near = 0.1f;
     float m_far = 1000.0f;
-    glm::vec3 m_terrainColor = glm::vec3(1.0, 1.0,1.0); // glm::vec3(0.0157f, 0.5294f, 0.1176f);
 };

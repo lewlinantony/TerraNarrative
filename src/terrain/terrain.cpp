@@ -40,37 +40,74 @@ FaultFormationGenerator::FaultFormationGenerator(int iterations, float minDelta,
     , m_maxDelta(maxDelta) {
 }
 
-void FaultFormationGenerator::createFault(std::vector<std::vector<float>>& heightMap) {
+float FaultFormationGenerator::calculateDisplacement(float iteration, float totalIterations) {
+    // Exponentially decrease displacement as iterations progress
+    float progress = iteration / totalIterations;
+    float factor = std::exp(-4.0f * progress);
+    
+    // Interpolate between max and min delta based on the factor
+    return m_minDelta + (m_maxDelta - m_minDelta) * factor;
+}
+
+std::pair<glm::vec2, glm::vec2> FaultFormationGenerator::generateFaultPoints(int width, int height, float iteration) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> dis(0.0f, 1.0f);
 
+    // Calculate center point and radius
+    float centerX = width * 0.5f;
+    float centerY = height * 0.5f;
+    float radius = std::min(width, height) * 0.5f;
+
+    // Generate angle for first point
+    float angle1 = dis(gen) * 2.0f * M_PI;
+    float x1 = centerX + radius * std::cos(angle1);
+    float y1 = centerY + radius * std::sin(angle1);
+
+    // Generate angle for second point (opposite side)
+    float angle2 = angle1 + M_PI + (dis(gen) - 0.5f) * M_PI * 0.5f;
+    float x2 = centerX + radius * std::cos(angle2);
+    float y2 = centerY + radius * std::sin(angle2);
+
+    return std::make_pair(glm::vec2(x1, y1), glm::vec2(x2, y2));
+}
+
+void FaultFormationGenerator::createFault(std::vector<std::vector<float>>& heightMap, float iteration) {
     int width = heightMap.size();
     int height = heightMap[0].size();
 
-    // Generate two random points to create a line
-    float x1 = dis(gen) * width;
-    float z1 = dis(gen) * height;
-    float x2 = dis(gen) * width;
-    float z2 = dis(gen) * height;
+    // Generate fault line points
+    auto [p1, p2] = generateFaultPoints(width, height, iteration);
 
-    // Calculate line parameters
-    float a = z2 - z1;
-    float b = -(x2 - x1);
-    float c = x2 * z1 - x1 * z2;
+    // Calculate line parameters (ax + by + c = 0)
+    float a = p2.y - p1.y;
+    float b = -(p2.x - p1.x);
+    float c = p2.x * p1.y - p1.x * p2.y;
     float normal = std::sqrt(a * a + b * b);
 
-    // Random height displacement
-    float displacement = m_minDelta + dis(gen) * (m_maxDelta - m_minDelta);
+    // Calculate displacement based on current iteration
+    float displacement = calculateDisplacement(iteration, m_iterations);
 
-    // Apply displacement to all points based on which side of the line they're on
+    // Apply displacement with smooth falloff
+    const float falloffDistance = std::min(width, height) * 0.1f;
+    
+    #pragma omp parallel for collapse(2)
     for(int x = 0; x < width; ++x) {
-        for(int z = 0; z < height; ++z) {
-            float distance = (a * x + b * z + c) / normal;
+        for(int y = 0; y < height; ++y) {
+            float distance = (a * x + b * y + c) / normal;
+            
+            // Calculate falloff factor
+            float falloff = 1.0f;
+            if(std::abs(distance) < falloffDistance) {
+                falloff = std::abs(distance) / falloffDistance;
+                falloff = 0.5f + 0.5f * std::cos(falloff * M_PI);
+            }
+
+            // Apply displacement with falloff
             if(distance > 0) {
-                heightMap[x][z] += displacement;
+                heightMap[x][y] += displacement * falloff;
             } else {
-                heightMap[x][z] -= displacement;
+                heightMap[x][y] -= displacement * falloff;
             }
         }
     }
@@ -84,7 +121,7 @@ void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>&
 
     // Apply fault formation multiple times
     for(int i = 0; i < m_iterations; ++i) {
-        createFault(heightMap);
+        createFault(heightMap, static_cast<float>(i));
     }
 
     // Normalize heightmap to [-1, 1] range
@@ -107,7 +144,6 @@ void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>&
         }
     }
 }
-
 
 //Midpoint Displacement Implementation
 MidpointDisplacementGenerator::MidpointDisplacementGenerator(float roughness, float initialDisplacement)
@@ -226,6 +262,9 @@ Terrain::Terrain(float yScale, float yShift, int resolution,
     , heightMap(width, std::vector<float>(height)) {
     initializeGLBuffers();
 }
+
+float Terrain::getYScale() const { return m_yScale; }
+float Terrain::getYShift() const { return m_yShift; }
 
 void Terrain::setTerrainGenerator(GenerationType type) {
     switch(type) {

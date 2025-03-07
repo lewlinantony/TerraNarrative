@@ -38,7 +38,9 @@ private:
     int m_iterations;
     float m_minDelta;
     float m_maxDelta;
-    void createFault(std::vector<std::vector<float>>& heightMap);
+    void createFault(std::vector<std::vector<float>>& heightMap, float iteration);
+    float calculateDisplacement(float iteration, float totalIterations);
+    std::pair<glm::vec2, glm::vec2> generateFaultPoints(int width, int height, float iteration);
 };
 
 class MidpointDisplacementGenerator : public TerrainGenerator {
@@ -52,10 +54,12 @@ private:
     void diamondStep(std::vector<std::vector<float>>& heightMap, int size, float displacement);
     void squareStep(std::vector<std::vector<float>>& heightMap, int size, float displacement);
     float getAverageHeight(const std::vector<std::vector<float>>& heightMap, int x, int z, int size);
+    
 };
 
 class Terrain {
 public:
+
     enum class GenerationType {
         PERLIN_NOISE,
         FAULT_FORMATION,
@@ -73,6 +77,8 @@ public:
     void initTexture(Shader& shader, const std::vector<const char*>& texturePaths);
     void generateTerrain(GenerationType type);
     void render() const;
+    float getYScale() const; 
+    float getYShift() const; 
 
 private:
     // OpenGL buffers
@@ -81,12 +87,14 @@ private:
     int m_width, m_height;
 
     // Perlin Noise
-    float m_yScale, m_yShift;
+
     int m_resolution;
     int m_numStrips;
     int m_numTrisPerStrip;
     int m_octaves;
     float m_persistence,m_frequency;
+    float m_yScale;
+    float m_yShift;
 
     //Fault Formation
     int m_iterations;

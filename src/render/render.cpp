@@ -14,13 +14,12 @@ void Renderer::render() {
 
     m_shader.use();
     setupMatrices();
-    m_shader.setVec3("color", m_terrainColor);
+    m_shader.setFloat("yScale",m_terrain.getYScale());
+    m_shader.setFloat("yShift",m_terrain.getYShift());
     m_terrain.render();
 }
 
-void Renderer::setTerrainColor(const glm::vec3& color) {
-    m_terrainColor = color;
-}
+
 
 void Renderer::setupMatrices() {
     glm::mat4 projection = glm::perspective(glm::radians(m_camera.Zoom), m_aspectRatio, m_near, m_far);
