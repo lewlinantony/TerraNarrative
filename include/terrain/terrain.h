@@ -79,6 +79,8 @@ public:
     void render() const;
     float getYScale() const; 
     float getYShift() const; 
+    float getheightMin() const;
+    float getheightMax() const;    
 
 private:
     // OpenGL buffers
@@ -86,8 +88,10 @@ private:
     
     int m_width, m_height;
 
-    // Perlin Noise
+    float m_heightMin = 0.0f;  
+    float m_heightMax = 0.0f;  
 
+    // Perlin Noise
     int m_resolution;
     int m_numStrips;
     int m_numTrisPerStrip;

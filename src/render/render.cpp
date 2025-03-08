@@ -16,6 +16,8 @@ void Renderer::render() {
     setupMatrices();
     m_shader.setFloat("yScale",m_terrain.getYScale());
     m_shader.setFloat("yShift",m_terrain.getYShift());
+    m_shader.setFloat("heightMin", m_terrain.getheightMin() * m_terrain.getYScale() - m_terrain.getYShift());
+    m_shader.setFloat("actualMaxHeight", m_terrain.getheightMax() * m_terrain.getYScale() - m_terrain.getYShift());    
     m_terrain.render();
 }
 

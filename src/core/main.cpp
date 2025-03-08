@@ -259,7 +259,7 @@ class TerraNarrative{
 
         int m_numStrips;
         int m_numTrisPerStrip;
-        float m_yScale = 7.0f;
+        float m_yScale = 8.0f;
         float m_yShift = 4.0f;  
         int m_resolution = 1;
         float m_noiseFrequency = 0.1f;
@@ -280,8 +280,9 @@ class TerraNarrative{
 
         const char* m_vertexShader = "../assets/shaders/terrain.vert";
         const char* m_fragShader = "../assets/shaders/terrain.frag";     
-        std::vector<const char*> m_texturePath = {"../assets/data/grass.png", 
-                                                    "../assets/data/rock.png"};
+        std::vector<const char*> m_texturePath = {"../assets/data/grass.jpg", 
+                                                    "../assets/data/stone.jpg",
+                                                    "../assets/data/snow.jpg"};
         
         GLuint m_VAO,m_VBO,m_IBO;
 

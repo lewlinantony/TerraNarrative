@@ -265,6 +265,8 @@ Terrain::Terrain(float yScale, float yShift, int resolution,
 
 float Terrain::getYScale() const { return m_yScale; }
 float Terrain::getYShift() const { return m_yShift; }
+float Terrain::getheightMin() const { return m_heightMin; }
+float Terrain::getheightMax() const { return m_heightMax; }
 
 void Terrain::setTerrainGenerator(GenerationType type) {
     switch(type) {
@@ -288,8 +290,18 @@ void Terrain::generateTerrain(GenerationType type) {
     if (!m_currentGenerator) {
         throw std::runtime_error("No terrain generator selected");
     }
-
+    
     m_currentGenerator->generateHeightMap(heightMap);
+
+    m_heightMin = heightMap[0][0];
+    m_heightMax = heightMap[0][0];
+    for (const auto& row : heightMap) {
+        for (float height : row) {
+            m_heightMin = std::min(m_heightMin, height);
+            m_heightMax = std::max(m_heightMax, height);
+        }
+    }    
+
     
     try {
         generateVertexArray();
