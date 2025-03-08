@@ -45,12 +45,14 @@ private:
 
 class MidpointDisplacementGenerator : public TerrainGenerator {
 public:
-    MidpointDisplacementGenerator(float roughness = 0.5f, float initialDisplacement = 1.0f);
+    MidpointDisplacementGenerator(float roughness = 0.9f, float initialDisplacement = 0.8f);
     void generateHeightMap(std::vector<std::vector<float>>& heightMap) override;
 
 private:
     float m_roughness;
     float m_initialDisplacement;
+    int calcNextPowerOfTwo(int size);
+    float randomFloatRange(float min, float max);
     void diamondStep(std::vector<std::vector<float>>& heightMap, int size, float displacement);
     void squareStep(std::vector<std::vector<float>>& heightMap, int size, float displacement);
     float getAverageHeight(const std::vector<std::vector<float>>& heightMap, int x, int z, int size);

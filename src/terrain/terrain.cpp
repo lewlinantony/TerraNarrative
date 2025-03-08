@@ -111,7 +111,7 @@ void FaultFormationGenerator::createFault(std::vector<std::vector<float>>& heigh
             }
         }
     }
-}
+} 
 
 void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>& heightMap) {
     // Initialize heightmap to 0
@@ -145,70 +145,124 @@ void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>&
     }
 }
 
-//Midpoint Displacement Implementation
+// MidpointDisplacementGenerator Implementation
 MidpointDisplacementGenerator::MidpointDisplacementGenerator(float roughness, float initialDisplacement)
     : m_roughness(roughness)
     , m_initialDisplacement(initialDisplacement) {
+    // Validate parameters
+    if (roughness < 0.0f) {
+        throw std::runtime_error("Roughness must be positive");
+    }
 }
 
-float MidpointDisplacementGenerator::getAverageHeight(
-    const std::vector<std::vector<float>>& heightMap, 
-    int x, int z, 
-    int size
-) {
-    float sum = 0.0f;
-    int count = 0;
-    int width = heightMap.size();
+int MidpointDisplacementGenerator::calcNextPowerOfTwo(int size) {
+    int power = 1;
+    while (power < size - 1) {
+        power *= 2;
+    }
+    return power;
+}
 
-    // Check all four corners if they're within bounds
-    if (x - size >= 0 && z - size >= 0) { 
-        sum += heightMap[x - size][z - size]; 
-        count++; 
-    }
-    if (x - size >= 0 && z + size < width) { 
-        sum += heightMap[x - size][z + size]; 
-        count++; 
-    }
-    if (x + size < width && z - size >= 0) { 
-        sum += heightMap[x + size][z - size]; 
-        count++; 
-    }
-    if (x + size < width && z + size < width) { 
-        sum += heightMap[x + size][z + size]; 
-        count++; 
-    }
-
-    return sum / count;
+float MidpointDisplacementGenerator::randomFloatRange(float min, float max) {
+    return min + (max - min) * (static_cast<float>(rand()) / RAND_MAX);
 }
 
 void MidpointDisplacementGenerator::diamondStep(
     std::vector<std::vector<float>>& heightMap, 
-    int size, 
-    float displacement
+    int rectSize, 
+    float curHeight
 ) {
-    int half = size / 2;
+    int halfRectSize = rectSize / 2;
     int width = heightMap.size();
 
-    for (int x = half; x < width; x += size) {
-        for (int z = half; z < width; z += size) {
-            float average = getAverageHeight(heightMap, x, z, half);
-            heightMap[x][z] = average + displacement * (((float)rand() / RAND_MAX) * 2 - 1);
+    for (int y = 0; y < width; y += rectSize) {
+        for (int x = 0; x < width; x += rectSize) {
+            int nextX = (x + rectSize) % width;
+            int nextY = (y + rectSize) % width;
+
+            // Handle wrapping
+            if (nextX < x) {
+                nextX = width - 1;
+            }
+            if (nextY < y) {
+                nextY = width - 1;
+            }
+
+            float topLeft = heightMap[y][x];
+            float topRight = heightMap[y][nextX];
+            float bottomLeft = heightMap[nextY][x];
+            float bottomRight = heightMap[nextY][nextX];
+
+            int midX = (x + halfRectSize) % width;
+            int midY = (y + halfRectSize) % width;
+
+            float randValue = randomFloatRange(-curHeight, curHeight);
+            float midPoint = (topLeft + topRight + bottomLeft + bottomRight) / 4.0f;
+
+            heightMap[midY][midX] = midPoint + randValue;
         }
     }
 }
 
 void MidpointDisplacementGenerator::squareStep(
     std::vector<std::vector<float>>& heightMap, 
-    int size, 
-    float displacement
+    int rectSize, 
+    float curHeight
 ) {
-    int half = size / 2;
+    /*                ----------------------------------
+                      |                                |
+                      |           PrevYCenter          |
+                      |                                |
+                      |                                |
+                      |                                |
+    ------------------CurTopLeft..CurTopMid..CurTopRight
+                      |                                |
+                      |                                |
+       CurPrevXCenter CurLeftMid   CurCenter           |
+                      |                                |
+                      |                                |
+                      CurBotLeft------------------------
+
+       CurTopMid = avg(PrevYCenter, CurTopLeft, CurTopRight, CurCenter)
+       CurLeftMid = avg(CurPrevXCenter, CurTopLeft, CurBotLeft, CurCenter)
+    */
+
+    int halfRectSize = rectSize / 2;
     int width = heightMap.size();
 
-    for (int x = 0; x < width; x += half) {
-        for (int z = (x + half) % size; z < width; z += size) {
-            float average = getAverageHeight(heightMap, x, z, half);
-            heightMap[x][z] = average + displacement * (((float)rand() / RAND_MAX) * 2 - 1);
+    for (int y = 0; y < width; y += rectSize) {
+        for (int x = 0; x < width; x += rectSize) {
+            int nextX = (x + rectSize) % width;
+            int nextY = (y + rectSize) % width;
+
+            // Handle wrapping
+            if (nextX < x) {
+                nextX = width - 1;
+            }
+            if (nextY < y) {
+                nextY = width - 1;
+            }
+
+            int midX = (x + halfRectSize) % width;
+            int midY = (y + halfRectSize) % width;
+                
+            int prevMidX = (x - halfRectSize + width) % width;
+            int prevMidY = (y - halfRectSize + width) % width;
+
+            float curTopLeft = heightMap[y][x];
+            float curTopRight = heightMap[y][nextX];
+            float curCenter = heightMap[midY][midX];
+            float prevYCenter = heightMap[prevMidY][midX];
+            float curBotLeft = heightMap[nextY][x]; 
+            float prevXCenter = heightMap[midY][prevMidX];
+
+            float curLeftMid = (curTopLeft + curCenter + curBotLeft + prevXCenter) / 4.0f + 
+                               randomFloatRange(-curHeight, curHeight);
+            float curTopMid = (curTopLeft + curCenter + curTopRight + prevYCenter) / 4.0f + 
+                              randomFloatRange(-curHeight, curHeight);
+
+            heightMap[y][midX] = curTopMid;
+            heightMap[midY][x] = curLeftMid;
         }
     }
 }
@@ -216,21 +270,51 @@ void MidpointDisplacementGenerator::squareStep(
 void MidpointDisplacementGenerator::generateHeightMap(std::vector<std::vector<float>>& heightMap) {
     int width = heightMap.size();
     
+    // Initialize heightmap to 0
+    for (auto& row : heightMap) {
+        std::fill(row.begin(), row.end(), 0.0f);
+    }
+    
+    // Calculate rectangle size (power of 2)
+    int rectSize = calcNextPowerOfTwo(width);
+    float curHeight = m_initialDisplacement;
+    float heightReduce = std::pow(2.0f, -m_roughness);
+    
     // Initialize corners with random values
-    heightMap[0][0] = ((float)rand() / RAND_MAX) * 2 - 1;
-    heightMap[0][width-1] = ((float)rand() / RAND_MAX) * 2 - 1;
-    heightMap[width-1][0] = ((float)rand() / RAND_MAX) * 2 - 1;
-    heightMap[width-1][width-1] = ((float)rand() / RAND_MAX) * 2 - 1;
-
+    heightMap[0][0] = randomFloatRange(-curHeight, curHeight);
+    heightMap[0][width-1] = randomFloatRange(-curHeight, curHeight);
+    heightMap[width-1][0] = randomFloatRange(-curHeight, curHeight);
+    heightMap[width-1][width-1] = randomFloatRange(-curHeight, curHeight);
+    
     // Main generation loop
-    float displacement = m_initialDisplacement;
-    for (int size = width - 1; size > 1; size /= 2) {
-        diamondStep(heightMap, size, displacement);
-        squareStep(heightMap, size, displacement);
-        displacement *= pow(2, -m_roughness);
+    while (rectSize > 0) {
+        diamondStep(heightMap, rectSize, curHeight);
+        squareStep(heightMap, rectSize, curHeight);
+        
+        rectSize /= 2;
+        curHeight *= heightReduce;
+    }
+    
+    // Normalize heightmap to [-1, 1] range
+    float minHeight = heightMap[0][0];
+    float maxHeight = heightMap[0][0];
+
+    // Find min and max heights
+    for (const auto& row : heightMap) {
+        for (float height : row) {
+            minHeight = std::min(minHeight, height);
+            maxHeight = std::max(maxHeight, height);
+        }
+    }
+
+    // Normalize
+    float range = maxHeight - minHeight;
+    for (auto& row : heightMap) {
+        for (float& height : row) {
+            height = 2.0f * (height - minHeight) / range - 1.0f;
+        }
     }
 }
-
 
 
 // Terrain Implementation
