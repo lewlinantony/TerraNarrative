@@ -262,7 +262,7 @@ class TerraNarrative{
         float m_yScale = 8.0f;
         float m_yShift = 4.0f;  
         int m_resolution = 1;
-        float m_noiseFrequency = 0.1f;
+        float m_noiseFrequency = 0.015f;
         int m_noiseOctaves = 5;
         float m_noisePersistence = 0.5f;
 
