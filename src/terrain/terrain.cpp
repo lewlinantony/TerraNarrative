@@ -114,10 +114,6 @@ void FaultFormationGenerator::createFault(std::vector<std::vector<float>>& heigh
 } 
 
 void FaultFormationGenerator::generateHeightMap(std::vector<std::vector<float>>& heightMap) {
-    // Initialize heightmap to 0
-    for(auto& row : heightMap) {
-        std::fill(row.begin(), row.end(), 0.0f);
-    }
 
     // Apply fault formation multiple times
     for(int i = 0; i < m_iterations; ++i) {
@@ -270,11 +266,6 @@ void MidpointDisplacementGenerator::squareStep(
 void MidpointDisplacementGenerator::generateHeightMap(std::vector<std::vector<float>>& heightMap) {
     int width = heightMap.size();
     
-    // Initialize heightmap to 0
-    for (auto& row : heightMap) {
-        std::fill(row.begin(), row.end(), 0.0f);
-    }
-    
     // Calculate rectangle size (power of 2)
     int rectSize = calcNextPowerOfTwo(width);
     float curHeight = m_initialDisplacement;
@@ -343,7 +334,9 @@ Terrain::Terrain(float yScale, float yShift, int resolution,
     , m_maxDelta(maxDelta)
     , m_roughness(roughness)
     , m_initialDisplacement(initialDisplacement)
-    , heightMap(width, std::vector<float>(height)) {
+    , heightMap(width, std::vector<float>(height, 0.0f))
+    , currentHeightMap(width, std::vector<float>(height, 0.0f))
+    , heightMaps(static_cast<int>(GenerationType::COUNT),std::vector<std::vector<float>>(width, std::vector<float>(height, 0.0f))){
     initializeGLBuffers();
 }
 
@@ -367,6 +360,59 @@ void Terrain::setTerrainGenerator(GenerationType type) {
             throw std::runtime_error("Unknown terrain generation type");
     }
 }
+
+void Terrain::addedTerrain(){
+    for (int i = 0; i < static_cast<int>(GenerationType::COUNT); ++i) {
+        GenerationType type = static_cast<GenerationType>(i);
+
+        setTerrainGenerator(type);  
+
+        if (!m_currentGenerator) {
+            throw std::runtime_error("No terrain generator selected");
+        }
+
+        m_currentGenerator->generateHeightMap(heightMap);
+        for(int x=0; x<m_width; x++)
+        {
+            for(int z=0; z<m_height; z++){
+                heightMaps[i][x][z]=heightMap[x][z]; 
+            }
+        }
+    }
+
+    maxMaps();
+
+    try {
+        generateVertexArray();
+        generateIndices();
+        setupBuffers();
+    } catch (const std::exception& e) {
+        throw;
+    }    
+}
+
+void Terrain::addMaps(){
+    for(int i =0; i< static_cast<int>(GenerationType::COUNT); i++){
+        for(int x=0; x<m_width; x++)
+        {
+            for(int z=0; z<m_height; z++){
+                currentHeightMap[x][z]+=heightMaps[i][x][z]; 
+            }
+        }
+    }
+}
+
+void Terrain::maxMaps(){
+    for(int i =0; i< static_cast<int>(GenerationType::COUNT); i++){
+        for(int x=0; x<m_width; x++)
+        {
+            for(int z=0; z<m_height; z++){
+                currentHeightMap[x][z]=std::max(currentHeightMap[x][z], heightMaps[i][x][z]); 
+            }
+        }
+    }
+}
+
 
 void Terrain::generateTerrain(GenerationType type) {
     setTerrainGenerator(type);
@@ -408,7 +454,7 @@ void Terrain::generateVertexArray() {
 
     for(int x = 0; x < m_height; x++) {
         for(int z = 0; z < m_width; z++) {
-            float height = heightMap[x][z] * m_yScale - m_yShift;            
+            float height = currentHeightMap[x][z] * m_yScale - m_yShift;            
             m_vertexArray.push_back(-m_height/2.0f + x);
             m_vertexArray.push_back(height);
             m_vertexArray.push_back(-m_width/2.0f + z);

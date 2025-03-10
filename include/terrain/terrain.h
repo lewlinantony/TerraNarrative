@@ -65,7 +65,8 @@ public:
     enum class GenerationType {
         PERLIN_NOISE,
         FAULT_FORMATION,
-        MIDPOINT_DISPLACEMENT
+        MIDPOINT_DISPLACEMENT,
+        COUNT
     };
 
     Terrain();
@@ -78,6 +79,7 @@ public:
 
     void initTexture(Shader& shader, const std::vector<const char*>& texturePaths);
     void generateTerrain(GenerationType type);
+    void addedTerrain();
     void render() const;
     float getYScale() const; 
     float getYShift() const; 
@@ -114,10 +116,16 @@ private:
     std::vector<float> m_vertexArray;
     std::vector<unsigned int> m_indices;
     std::vector<std::vector<float>> heightMap;
+    std::vector<std::vector<float>> currentHeightMap;
+    std::vector<std::vector<std::vector<float>>> heightMaps;
 
     // Terrain generators
     std::unique_ptr<TerrainGenerator> m_currentGenerator;
     
+
+    void addMaps();
+    void maxMaps();
+
     // Internal methods
     void initializeGLBuffers();
     void generateVertexArray();
