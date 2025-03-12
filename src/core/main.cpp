@@ -342,24 +342,24 @@ class TerraNarrative{
                 m_terrain->initTexture(shader, m_texturePath);            
                 
                 // Map the terrain type to the corresponding generation type
-                // Terrain::GenerationType genType;
-                // switch(m_terrainType) {
-                //     case PERLIN_NOISE:
-                //         genType = Terrain::GenerationType::PERLIN_NOISE;
-                //         break;
-                //     case FAULT_FORMATION:
-                //         genType = Terrain::GenerationType::FAULT_FORMATION;
-                //         break;
-                //     case MIDPOINT_DISPLACEMENT:
-                //         genType = Terrain::GenerationType::MIDPOINT_DISPLACEMENT;
-                //         break;
-                //     default:
-                //         throw std::runtime_error("Invalid terrain type");
-                // }
+                Terrain::GenerationType genType;
+                switch(m_terrainType) {
+                    case PERLIN_NOISE:
+                        genType = Terrain::GenerationType::PERLIN_NOISE;
+                        break;
+                    case FAULT_FORMATION:
+                        genType = Terrain::GenerationType::FAULT_FORMATION;
+                        break;
+                    case MIDPOINT_DISPLACEMENT:
+                        genType = Terrain::GenerationType::MIDPOINT_DISPLACEMENT;
+                        break;
+                    default:
+                        throw std::runtime_error("Invalid terrain type");
+                }
                 
-                // m_terrain->generateTerrain(genType);
+                m_terrain->generateTerrain(genType);
 
-                m_terrain->addedTerrain();
+                // m_terrain->addedTerrain();
             } catch (const std::runtime_error& e) {
                 std::cerr << "Failed to load terrain: " << e.what() << std::endl;
                 throw;

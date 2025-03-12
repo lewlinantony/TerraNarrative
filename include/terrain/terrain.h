@@ -30,18 +30,43 @@ private:
 
 // Fault formation terrain generator
 class FaultFormationGenerator : public TerrainGenerator {
-public:
-    FaultFormationGenerator(int iterations = 200, float minDelta = 0.01f, float maxDelta = 0.15f);
-    void generateHeightMap(std::vector<std::vector<float>>& heightMap) override;
+    private:
+        int m_iterations;
+        float m_minDelta;
+        float m_maxDelta;
+        
+    public:
+        enum TerrainType { GENERIC, MOUNTAIN_RANGE, ROLLING_HILLS };
+        
+    private:
+        TerrainType m_terrainType;
+        
+        // FastNoiseLite wrapper class
+        class NoiseGenerator {
+        private:
+            int m_seed;
+        public:
+            NoiseGenerator(int seed = 42);
+            void setSeed(int seed);
+            float getNoise(float x, float y);
+            float getOctaveNoise(float x, float y, int octaves, float persistence);
+        };
+        
+        NoiseGenerator m_noise;
+        
+        float calculateDisplacement(float iteration, float totalIterations);
+        std::pair<glm::vec2, glm::vec2> generateFaultPoints(int width, int height, float iteration);
+        void createFault(std::vector<std::vector<float>>& heightMap, float iteration);
+        void applySimpleErosion(std::vector<std::vector<float>>& heightMap, int iterations);
+        void addDetailNoise(std::vector<std::vector<float>>& heightMap, float intensity);
+        void smoothTerrain(std::vector<std::vector<float>>& heightMap);
 
-private:
-    int m_iterations;
-    float m_minDelta;
-    float m_maxDelta;
-    void createFault(std::vector<std::vector<float>>& heightMap, float iteration);
-    float calculateDisplacement(float iteration, float totalIterations);
-    std::pair<glm::vec2, glm::vec2> generateFaultPoints(int width, int height, float iteration);
-};
+        
+    public:
+        FaultFormationGenerator(int iterations, float minDelta, float maxDelta);
+        void setTerrainType(TerrainType type);
+        void generateHeightMap(std::vector<std::vector<float>>& heightMap) override;
+    };
 
 class MidpointDisplacementGenerator : public TerrainGenerator {
 public:
@@ -125,10 +150,11 @@ private:
 
     void addMaps();
     void maxMaps();
+    void weightedAddMaps();    
 
     // Internal methods
     void initializeGLBuffers();
-    void generateVertexArray();
+    void generateVertexArray(std::vector<std::vector<float>>& heightMap);
     void generateIndices();
     void setupBuffers();
     void setTerrainGenerator(GenerationType type);
